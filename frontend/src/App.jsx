@@ -1,14 +1,30 @@
 import { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import ChatInterface from './components/ChatInterface';
+import Header from './components/Header';
+import LeftSidebar from './components/LeftSidebar';
+import RightSidebar from './components/RightSidebar';
+import MainContent from './components/MainContent';
 import { api } from './api';
 import './App.css';
+
+// Default council configuration (would come from backend in future)
+const DEFAULT_COUNCIL_MODELS = [
+  'openai/gpt-5.1',
+  'google/gemini-3-pro-preview',
+  'anthropic/claude-sonnet-4.5',
+  'x-ai/grok-4',
+];
+const DEFAULT_CHAIRMAN_MODEL = 'google/gemini-3-pro-preview';
 
 function App() {
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfigSidebar, setShowConfigSidebar] = useState(false);
+  const [telemetry, setTelemetry] = useState({ latency: null, tokensPerSecond: null });
+
+  // Get the latest assistant message for display
+  const latestMessage = currentConversation?.messages?.filter(m => m.role === 'assistant').slice(-1)[0] || null;
 
   // Load conversations on mount
   useEffect(() => {
@@ -40,7 +56,7 @@ function App() {
     }
   };
 
-  const handleNewConversation = async () => {
+  const handleNewSession = async () => {
     try {
       const newConv = await api.createConversation();
       setConversations([
@@ -48,25 +64,40 @@ function App() {
         ...conversations,
       ]);
       setCurrentConversationId(newConv.id);
+      setCurrentConversation(newConv);
     } catch (error) {
       console.error('Failed to create conversation:', error);
     }
   };
 
-  const handleSelectConversation = (id) => {
-    setCurrentConversationId(id);
-  };
-
-  const handleSendMessage = async (content) => {
-    if (!currentConversationId) return;
+  const handleSubmitQuery = async (content) => {
+    // If no conversation exists, create one first
+    let convId = currentConversationId;
+    if (!convId) {
+      try {
+        const newConv = await api.createConversation();
+        setConversations([
+          { id: newConv.id, created_at: newConv.created_at, message_count: 0 },
+          ...conversations,
+        ]);
+        setCurrentConversationId(newConv.id);
+        setCurrentConversation(newConv);
+        convId = newConv.id;
+      } catch (error) {
+        console.error('Failed to create conversation:', error);
+        return;
+      }
+    }
 
     setIsLoading(true);
+    const startTime = Date.now();
+
     try {
       // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
       setCurrentConversation((prev) => ({
         ...prev,
-        messages: [...prev.messages, userMessage],
+        messages: [...(prev?.messages || []), userMessage],
       }));
 
       // Create a partial assistant message that will be updated progressively
@@ -91,7 +122,7 @@ function App() {
       }));
 
       // Send message with streaming
-      await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
+      await api.sendMessageStream(convId, content, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
             setCurrentConversation((prev) => {
@@ -110,6 +141,11 @@ function App() {
               lastMsg.loading.stage1 = false;
               return { ...prev, messages };
             });
+            // Update telemetry
+            setTelemetry(t => ({
+              ...t,
+              latency: Date.now() - startTime,
+            }));
             break;
 
           case 'stage2_start':
@@ -180,7 +216,6 @@ function App() {
       });
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Update the assistant message with error instead of removing messages
       setCurrentConversation((prev) => {
         const messages = [...prev.messages];
         const lastMsg = messages[messages.length - 1];
@@ -194,20 +229,51 @@ function App() {
     }
   };
 
+  const handleRegenerate = () => {
+    // TODO: Implement regeneration
+    console.log('Regenerate requested');
+  };
+
+  const handleExport = () => {
+    // TODO: Implement export
+    console.log('Export requested');
+  };
+
+  const handleConfigChange = (config) => {
+    // TODO: Implement config update to backend
+    console.log('Config changed:', config);
+  };
+
   return (
-    <div className="app">
-      <Sidebar
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
+    <>
+      <Header
+        currentSession={currentConversation}
+        onNewSession={handleNewSession}
       />
-      <ChatInterface
-        conversation={currentConversation}
-        onSendMessage={handleSendMessage}
-        isLoading={isLoading}
-      />
-    </div>
+
+      <div className="flex flex-1 overflow-hidden relative">
+        <LeftSidebar
+          councilModels={DEFAULT_COUNCIL_MODELS}
+          chairmanModel={DEFAULT_CHAIRMAN_MODEL}
+          telemetry={telemetry}
+        />
+
+        <MainContent
+          session={currentConversation}
+          message={latestMessage}
+          onSubmit={handleSubmitQuery}
+          isLoading={isLoading}
+          onRegenerate={handleRegenerate}
+          onExport={handleExport}
+        />
+
+        <RightSidebar
+          isOpen={showConfigSidebar}
+          onClose={() => setShowConfigSidebar(false)}
+          onConfigChange={handleConfigChange}
+        />
+      </div>
+    </>
   );
 }
 
