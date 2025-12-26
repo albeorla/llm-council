@@ -53,8 +53,35 @@ export default function ChatInterface({
       <div className="messages-container">
         {conversation.messages.length === 0 ? (
           <div className="empty-state">
-            <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM Council</p>
+            <h2>Welcome to LLM Council</h2>
+            <p className="subtitle">Get answers from multiple AI models working together</p>
+            <div className="how-it-works">
+              <h3>How it works:</h3>
+              <div className="stage-preview">
+                <div className="stage-item">
+                  <span className="stage-number">1</span>
+                  <div className="stage-info">
+                    <strong>Individual Responses</strong>
+                    <p>Multiple AI models independently answer your question</p>
+                  </div>
+                </div>
+                <div className="stage-item">
+                  <span className="stage-number">2</span>
+                  <div className="stage-info">
+                    <strong>Peer Review</strong>
+                    <p>Each model anonymously evaluates and ranks all responses</p>
+                  </div>
+                </div>
+                <div className="stage-item">
+                  <span className="stage-number">3</span>
+                  <div className="stage-info">
+                    <strong>Final Synthesis</strong>
+                    <p>A chairman model synthesizes the best collective answer</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p className="cta">Ask a question below to get started</p>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
@@ -72,11 +99,42 @@ export default function ChatInterface({
                 <div className="assistant-message">
                   <div className="message-label">LLM Council</div>
 
+                  {/* Error Display */}
+                  {msg.error && (
+                    <div className="error-message">
+                      <div className="error-icon">⚠️</div>
+                      <div className="error-content">
+                        <div className="error-title">Error</div>
+                        <div className="error-text">{msg.error}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Progress Indicator */}
+                  {!msg.error && (msg.loading?.stage1 || msg.loading?.stage2 || msg.loading?.stage3) && (
+                    <div className="progress-indicator">
+                      <div className={`progress-step ${msg.stage1 ? 'completed' : msg.loading?.stage1 ? 'active' : 'pending'}`}>
+                        <div className="step-circle">1</div>
+                        <div className="step-label">Individual Responses</div>
+                      </div>
+                      <div className="progress-line"></div>
+                      <div className={`progress-step ${msg.stage2 ? 'completed' : msg.loading?.stage2 ? 'active' : 'pending'}`}>
+                        <div className="step-circle">2</div>
+                        <div className="step-label">Peer Rankings</div>
+                      </div>
+                      <div className="progress-line"></div>
+                      <div className={`progress-step ${msg.stage3 ? 'completed' : msg.loading?.stage3 ? 'active' : 'pending'}`}>
+                        <div className="step-circle">3</div>
+                        <div className="step-label">Final Synthesis</div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Stage 1 */}
                   {msg.loading?.stage1 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 1: Collecting individual responses...</span>
+                      <span>Collecting responses from multiple AI models...</span>
                     </div>
                   )}
                   {msg.stage1 && <Stage1 responses={msg.stage1} />}
@@ -85,7 +143,7 @@ export default function ChatInterface({
                   {msg.loading?.stage2 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 2: Peer rankings...</span>
+                      <span>Models are evaluating each other's responses anonymously...</span>
                     </div>
                   )}
                   {msg.stage2 && (
@@ -100,7 +158,7 @@ export default function ChatInterface({
                   {msg.loading?.stage3 && (
                     <div className="stage-loading">
                       <div className="spinner"></div>
-                      <span>Running Stage 3: Final synthesis...</span>
+                      <span>Chairman synthesizing the best collective answer...</span>
                     </div>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
@@ -120,26 +178,24 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {conversation.messages.length === 0 && (
-        <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={3}
-          />
-          <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading}
-          >
-            Send
-          </button>
-        </form>
-      )}
+      <form className="input-form" onSubmit={handleSubmit}>
+        <textarea
+          className="message-input"
+          placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          rows={3}
+        />
+        <button
+          type="submit"
+          className="send-button"
+          disabled={!input.trim() || isLoading}
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }
