@@ -16,6 +16,7 @@ function deAnonymizeText(text, labelToModel) {
 
 export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
   const [activeTab, setActiveTab] = useState(0);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (!rankings || rankings.length === 0) {
     return null;
@@ -23,7 +24,19 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
 
   return (
     <div className="stage stage2">
-      <h3 className="stage-title">Stage 2: Peer Rankings</h3>
+      <div className="stage-header-row">
+        <h3 className="stage-title">Stage 2: Peer Rankings</h3>
+        <button
+          className="collapse-button"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
+        >
+          {isCollapsed ? '▼' : '▲'}
+        </button>
+      </div>
+
+      {!isCollapsed && (
+        <>
 
       <h4>Raw Evaluations</h4>
       <p className="stage-description">
@@ -93,6 +106,8 @@ export default function Stage2({ rankings, labelToModel, aggregateRankings }) {
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

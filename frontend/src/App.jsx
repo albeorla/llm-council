@@ -76,6 +76,7 @@ function App() {
         stage2: null,
         stage3: null,
         metadata: null,
+        error: null,
         loading: {
           stage1: false,
           stage2: false,
@@ -163,6 +164,13 @@ function App() {
 
           case 'error':
             console.error('Stream error:', event.message);
+            setCurrentConversation((prev) => {
+              const messages = [...prev.messages];
+              const lastMsg = messages[messages.length - 1];
+              lastMsg.error = event.message || 'An error occurred while processing your request';
+              lastMsg.loading = { stage1: false, stage2: false, stage3: false };
+              return { ...prev, messages };
+            });
             setIsLoading(false);
             break;
 
@@ -172,11 +180,16 @@ function App() {
       });
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Remove optimistic messages on error
-      setCurrentConversation((prev) => ({
-        ...prev,
-        messages: prev.messages.slice(0, -2),
-      }));
+      // Update the assistant message with error instead of removing messages
+      setCurrentConversation((prev) => {
+        const messages = [...prev.messages];
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg && lastMsg.role === 'assistant') {
+          lastMsg.error = error.message || 'Failed to communicate with the server. Please try again.';
+          lastMsg.loading = { stage1: false, stage2: false, stage3: false };
+        }
+        return { ...prev, messages };
+      });
       setIsLoading(false);
     }
   };
